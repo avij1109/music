@@ -6,9 +6,9 @@ node_modules/
 # Expo
 .expo/
 dist/
-web-build/
+web-build/          # ✅ Expo web builds
 
-# Native
+# Native builds
 *.orig.*
 *.jks
 *.p8
@@ -19,7 +19,7 @@ web-build/
 # Metro
 .metro-health-check*
 
-# debug
+# Debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
@@ -28,8 +28,22 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Local env files
+.env*
+.env.*              # ✅ Catches all env variants like .env.production, .env.local etc
 
-# typescript
+# TypeScript
 *.tsbuildinfo
+
+# VS Code
+.vscode/            # ✅ If you're using VSCode, it's good to ignore your personal workspace settings
+
+# Logs
+*.log               # ✅ Ignore log files like expo-debug.log
+
+# Expo Go cache
+.expo-shared/       # ✅ Sometimes created by Expo Go
+
+# iOS/Android build cache
+ios/build/
+android/app/build/
