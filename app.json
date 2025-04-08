@@ -1,15 +1,21 @@
 {
   "expo": {
-    "name": "ProjectFuncpro",
-    "slug": "ProjectFuncpro",
+    "name": "avij1109",
+    "slug": "ml-spotify-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
-    
-
-    "splash": {
+    "scheme": "mlspotify",
+    "owner": "avij1109",
+    "platforms": ["ios", "android", "web"],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  },
+  "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
@@ -28,4 +34,3 @@
       "favicon": "./assets/favicon.png"
     }
   }
-}
