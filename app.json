@@ -1,36 +1,36 @@
 {
   "expo": {
-    "name": "avij1109",
-    "slug": "ml-spotify-app",
+    "name": "Spotify Music Recommender",
+    "slug": "spotify-music-recommender",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "scheme": "mlspotify",
-    "owner": "avij1109",
-    "platforms": ["ios", "android", "web"],
-    "extra": {
-      "eas": {
-        "projectId": "your-project-id"
-      }
-    }
-  },
-  "splash": {
+    "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#121212"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#121212"
       }
     },
     "web": {
-      "bundler": "metro",
       "favicon": "./assets/favicon.png"
+    },
+    "scheme": "myspotifyapp",
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
     }
   }
+}
