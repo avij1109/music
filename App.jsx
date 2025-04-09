@@ -79,26 +79,17 @@ export default function App() {
       setTopArtists(artists);
       
       // Generate recommendations
-      try {
-        // Log what we're using for recommendations
-        if (tracks.length > 0) {
-          console.log("Using top tracks for recommendations:", 
-            tracks.slice(0, 5).map(t => t.name).join(', '));
-        } else if (artists.length > 0) {
-          console.log("Using top artists for recommendations:", 
-            artists.slice(0, 5).map(a => a.name).join(', '));
-        } else {
-          console.log("Using default genres for recommendations");
-        }
-        
-        const recs = await getRecommendations(token, tracks, artists);
-        console.log("Got recommendations:", recs.length);
-        setRecommendations(recs);
-      } catch (recError) {
-        console.error("Recommendation error:", recError);
-        setError("Failed to load recommendations: " + recError.message);
-        setRecommendations([]);
-      }
+      // In loadUserData function in App.jsx
+try {
+  // Get recommendations using featured playlists instead
+  const recs = await getRecommendations(token);
+  console.log("Got recommendations:", recs ? recs.length : 0);
+  setRecommendations(recs || []);
+} catch (recError) {
+  console.error("Recommendation error:", recError);
+  setError("Failed to load recommendations: " + recError.message);
+  setRecommendations([]);
+}
     } catch (error) {
       console.error("Data loading error:", error);
       setError(error.message);
@@ -312,6 +303,7 @@ export default function App() {
       </View>
     </SafeAreaView>
   );
+  
 }
 
 const styles = StyleSheet.create({
