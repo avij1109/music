@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useState, useEffect } from "react";
 import {
   Text,
@@ -19,7 +20,8 @@ import {
   getRecommendations,
   createPlaylist,
   addTracksToPlaylist,
-  testApiCall
+  testApiCall,
+  getRecentlyPlayedTracks
 } from "./lib/spotify";
 
 export default function App() {
@@ -31,6 +33,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('medium_term'); // options: short_term, medium_term, long_term
   const [error, setError] = useState(null);
+  const [recommendationSource, setRecommendationSource] = useState("recommendations");
 
   useEffect(() => {
     if (token) {
@@ -63,33 +66,47 @@ export default function App() {
     try {
       setLoading(true);
       setError(null);
-      
+  
       // Get user profile
       const profile = await getUserProfile(token);
       console.log("Got user profile:", profile.display_name);
       setUserProfile(profile);
-      
+  
       // Get top tracks and artists
       const tracks = await getUserTopTracks(token, timeRange);
       console.log("Got top tracks:", tracks.length);
       setTopTracks(tracks);
-      
+  
       const artists = await getUserTopArtists(token, timeRange);
       console.log("Got top artists:", artists.length);
       setTopArtists(artists);
-      
-      // Generate recommendations
-      // In loadUserData function in App.jsx
-try {
-  // Get recommendations using featured playlists instead
-  const recs = await getRecommendations(token);
-  console.log("Got recommendations:", recs ? recs.length : 0);
-  setRecommendations(recs || []);
-} catch (recError) {
-  console.error("Recommendation error:", recError);
-  setError("Failed to load recommendations: " + recError.message);
-  setRecommendations([]);
-}
+  
+      // Try to get recommendations using helper
+      try {
+        console.log("Trying recommendations API...");
+        const recs = await getRecommendations(token, tracks, artists);
+        console.log("Successfully got recommendations:", recs.length);
+        setRecommendations(recs);
+        setRecommendationSource("recommendations");
+      } catch (recError) {
+        console.error("Recommendations failed, trying recently played:", recError);
+  
+        // Fallback: Recently played
+        try {
+          const recentTracks = await getRecentlyPlayedTracks(token);
+          console.log("Got recently played tracks instead:", recentTracks.length);
+          setRecommendations(recentTracks);
+          setRecommendationSource("recently_played");
+        } catch (recentError) {
+          console.error("Recently played failed:", recentError);
+  
+          // Final fallback: Top tracks
+          console.log("Using top tracks as recommendations fallback");
+          setRecommendations(tracks || []);
+          setRecommendationSource("top_tracks");
+          setError("Unable to load recommendations. Showing your top tracks instead.");
+        }
+      }
     } catch (error) {
       console.error("Data loading error:", error);
       setError(error.message);
@@ -98,6 +115,7 @@ try {
       setLoading(false);
     }
   };
+  
 
   const createRecommendationPlaylist = async () => {
     try {
@@ -111,8 +129,8 @@ try {
       const playlist = await createPlaylist(
         token,
         userProfile.id,
-        "Your Personalized Recommendations",
-        "Created by Music Recommender App"
+        "Your Personalized Music Collection",
+        `Created by Music Recommender App - ${new Date().toLocaleDateString()}`
       );
       
       // Add recommended tracks to the playlist
@@ -121,7 +139,7 @@ try {
       
       Alert.alert(
         "Success!",
-        "A new playlist with your recommendations has been created in your Spotify account!"
+        "A new playlist with your music has been created in your Spotify account!"
       );
     } catch (error) {
       console.error("Playlist creation error:", error);
@@ -171,6 +189,18 @@ try {
         </View>
       </View>
     );
+  };
+
+  // Get recommendation section title based on source
+  const getRecommendationTitle = () => {
+    switch (recommendationSource) {
+      case "recently_played":
+        return "Recently Played";
+      case "top_tracks":
+        return "Your Favorites";
+      default:
+        return "Recommended For You";
+    }
   };
 
   return (
@@ -277,11 +307,11 @@ try {
                 </View>
                 
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Recommended For You</Text>
+                  <Text style={styles.sectionTitle}>{getRecommendationTitle()}</Text>
                   {recommendations.length > 0 ? (
                     recommendations.slice(0, 10).map(track => renderItem(track, true))
                   ) : (
-                    <Text style={styles.emptyText}>No recommendations available</Text>
+                    <Text style={styles.emptyText}>No music available</Text>
                   )}
                 </View>
                 
@@ -292,7 +322,7 @@ try {
                     disabled={loading}
                   >
                     <Text style={styles.createPlaylistButtonText}>
-                      Create Playlist from Recommendations
+                      Create Playlist from {getRecommendationTitle()}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -303,7 +333,6 @@ try {
       </View>
     </SafeAreaView>
   );
-  
 }
 
 const styles = StyleSheet.create({
