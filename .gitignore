@@ -23,6 +23,31 @@ web-build/          # ✅ Expo web builds
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+# Python venv
+venv/
+*.pyc
+__pycache__/
+
+# VS Code settings
+.vscode/
+
+# Environment variables / secrets
+.env
+.env.*
+
+# Flask specific
+instance/
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
 
 # macOS
 .DS_Store
