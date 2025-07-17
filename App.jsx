@@ -1,223 +1,239 @@
-import React, { useState, useEffect } from "react";
-import {
-  Text,
-  View,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  SafeAreaView,
-  StatusBar
-} from "react-native";
-import { loginWithSpotify, getUserProfile } from "./lib/auth";
-import {
-  getUserTopTracks,
-  getUserTopArtists,
-  getRecommendations,
-  createPlaylist,
-  addTracksToPlaylist,
-  testApiCall,
-  getRecentlyPlayedTracks
-} from "./lib/spotify";
-import { getMLRecommendations } from "./lib/ml"; // ML recommender
+// App.jsx (Updated with ThemeContext)
+import React, { useState, useEffect } from 'react';
+import { View, Text, Alert, StyleSheet, Image, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function App() {
-  const [token, setToken] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [topTracks, setTopTracks] = useState([]);
-  const [topArtists, setTopArtists] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [timeRange, setTimeRange] = useState('medium_term');
-  const [error, setError] = useState(null);
-  const [recommendationSource, setRecommendationSource] = useState("recommendations");
+// Import the new provider and hook
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'; 
+
+import LoginScreen from './screens/LoginScreen';
+import HomeScreen from './screens/HomeScreen';
+import MoodsScreen from './screens/MoodsScreen';
+import PersonalScreen from './screens/PersonalScreen';
+
+import { loginWithSpotify, getUserProfile } from './lib/auth';
+import { testApiCall } from './lib/spotify';
+
+const Stack = createNativeStackNavigator();
+const Drawer = createDrawerNavigator();
+
+function DrawerContent({ navigation, token, onLogout }) {
+  // Get theme state and toggle function from the context
+  const { isDarkMode, toggleTheme } = useTheme(); 
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [validAvatar, setValidAvatar] = useState(true);
+  const styles = getStyles(isDarkMode);
 
   useEffect(() => {
-    if (token) loadUserData();
-  }, [token, timeRange]);
+    getUserProfile(token)
+      .then(setProfile)
+      .catch((err) => console.error("Profile Error:", err))
+      .finally(() => setLoadingProfile(false));
+  }, [token]);
+
+  const avatarUrl = Array.isArray(profile?.images) && profile.images.length > 0
+    ? profile.images[0].url
+    : null;
+
+  return (
+    <View style={styles.drawerContainer}>
+      {/* Theme toggle now uses the function from the context */}
+      <View style={styles.themeToggleContainer}>
+        <Ionicons name={isDarkMode ? 'moon' : 'sunny'} size={20} color={isDarkMode ? '#fff' : '#000'} />
+        <Text style={styles.themeToggleText}>{isDarkMode ? 'Dark' : 'Light'} Mode</Text>
+        <Switch
+          value={isDarkMode}
+          onValueChange={toggleTheme} // Use the toggle function from context
+          thumbColor={isDarkMode ? '#1DB954' : '#f4f3f4'}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+        />
+      </View>
+
+      <View style={styles.profileContainer}>
+        {loadingProfile ? (
+          <ActivityIndicator color="#1DB954" />
+        ) : (
+          <>
+            <Image
+              source={{
+                uri: validAvatar && avatarUrl
+                  ? avatarUrl
+                  : 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png',
+              }}
+              onError={() => setValidAvatar(false)}
+              style={styles.avatar}
+            />
+            <Text style={styles.profileName}>
+              {profile ? profile.display_name : 'User'}
+            </Text>
+            <Text style={styles.profileEmail}>
+              {profile ? profile.email : ''}
+            </Text>
+          </>
+        )}
+      </View>
+
+      <View style={styles.navContainer}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("HomeScreen")}> 
+          <Ionicons name="home-outline" size={22} color={isDarkMode ? 'white' : 'black'} />
+          <Text style={styles.navItemText}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("MoodsScreen")}> 
+          <Ionicons name="musical-notes-outline" size={22} color={isDarkMode ? 'white' : 'black'} />
+          <Text style={styles.navItemText}>Find by Mood</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("PersonalScreen")}> 
+          <Ionicons name="sparkles-outline" size={22} color={isDarkMode ? 'white' : 'black'} />
+          <Text style={styles.navItemText}>Personal Picks</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.footerContainer}>
+        <TouchableOpacity style={styles.navItem} onPress={onLogout}> 
+          <Ionicons name="log-out-outline" size={22} color="#ff4545" />
+          <Text style={[styles.navItemText, { color: '#ff4545' }]}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function DrawerNavigator({ token, onLogout }) {
+  // Get theme state from context to style the navigator itself
+  const { isDarkMode } = useTheme();
+  return (
+    <Drawer.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: isDarkMode ? '#121212' : '#fff' },
+        headerTintColor: isDarkMode ? '#fff' : '#000',
+        drawerStyle: { backgroundColor: isDarkMode ? '#121212' : '#fff', width: 250 },
+      }}
+      drawerContent={(props) => (
+        // We no longer pass theme props here
+        <DrawerContent {...props} token={token} onLogout={onLogout} />
+      )}
+    >
+      {/* Screens no longer need theme passed in initialParams */}
+      <Drawer.Screen name="HomeScreen" component={HomeScreen} initialParams={{ token }} options={{ title: 'Recommendations' }} />
+      <Drawer.Screen name="MoodsScreen" component={MoodsScreen} initialParams={{ token }} options={{ title: 'Select a Mood' }} />
+      <Drawer.Screen name="PersonalScreen" component={PersonalScreen} initialParams={{ token }} options={{ title: 'Personal Picks' }} />
+    </Drawer.Navigator>
+  );
+}
+
+// A new component to hold the main app logic, so it can be wrapped by the provider
+function AppContent() {
+  const { isDarkMode } = useTheme(); // Get theme for the NavigationContainer
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     try {
       setLoading(true);
-      setError(null);
       const accessToken = await loginWithSpotify();
-      const testResult = await testApiCall(accessToken);
-      console.log("API test successful:", testResult.display_name);
-      setToken(accessToken);
+      if (accessToken) {
+        await testApiCall(accessToken);
+        setToken(accessToken);
+      }
     } catch (error) {
-      setError(error.message);
       Alert.alert("Login Failed", error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUserData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const profile = await getUserProfile(token);
-      setUserProfile(profile);
-
-      const tracks = await getUserTopTracks(token, timeRange);
-      const artists = await getUserTopArtists(token, timeRange);
-      const recentTracks = await getRecentlyPlayedTracks(token);
-
-      setTopTracks(tracks);
-      setTopArtists(artists);
-
-      try {
-        const topIds = tracks.map(t => t.id);
-        const recentIds = recentTracks.map(t => t.id);
-        const mlRecommendedIds = await getMLRecommendations(topIds, recentIds);
-
-        const mlTracks = await Promise.all(
-          mlRecommendedIds.map(id =>
-            fetch(`https://api.spotify.com/v1/tracks/${id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).then(res => res.json())
-          )
-        );
-
-        setRecommendations(mlTracks);
-        setRecommendationSource("ml_recommender");
-      } catch (mlError) {
-        const recs = await getRecommendations(token, tracks, artists);
-        setRecommendations(recs);
-        setRecommendationSource("recommendations");
-      }
-    } catch (error) {
-      console.error("Data loading error:", error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createRecommendationPlaylist = async () => {
-    try {
-      if (!userProfile || recommendations.length === 0) return;
-      setLoading(true);
-      const playlist = await createPlaylist(
-        token,
-        userProfile.id,
-        "Your Personalized Music Collection",
-        `Created by ML Music App - ${new Date().toLocaleDateString()}`
-      );
-      const uris = recommendations.map(track => track.uri);
-      await addTracksToPlaylist(token, playlist.id, uris);
-      Alert.alert("Success", "Playlist created on Spotify!");
-    } catch (error) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getRecommendationTitle = () => {
-    switch (recommendationSource) {
-      case "ml_recommender":
-        return "AI-Powered Picks 🎧";
-      case "recently_played":
-        return "Recently Played";
-      case "top_tracks":
-        return "Your Favorites";
-      default:
-        return "Recommended For You";
-    }
-  };
-
-  const renderItem = (item, isTrack = true) => {
-    const imageUrl = isTrack ? item.album?.images?.[1]?.url : item.images?.[1]?.url;
-    const name = item.name || "Unknown";
-    const subtitle = isTrack
-      ? item.artists?.map(artist => artist.name).join(", ") || "Unknown Artist"
-      : `Popularity: ${item.popularity || "N/A"}`;
-
-    return (
-      <View key={item.id} style={styles.itemContainer}>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.itemImage} />
-        ) : (
-          <View style={[styles.itemImage, styles.noImage]}>
-            <Text style={styles.noImageText}>{name.charAt(0)}</Text>
-          </View>
-        )}
-        <View style={styles.itemDetails}>
-          <Text style={styles.itemTitle}>{name}</Text>
-          <Text style={styles.itemSubtitle}>{subtitle}</Text>
-        </View>
-      </View>
-    );
-  };
+  const handleLogout = () => setToken(null);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
-        {!token ? (
-          <View style={styles.loginContainer}>
-            <Text style={styles.title}>Music Recommender</Text>
-            <Text style={styles.subtitle}>Login to Spotify for personalized recommendations</Text>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
-              <Text style={styles.loginButtonText}>Login with Spotify</Text>
-            </TouchableOpacity>
-            {loading && <ActivityIndicator color="#1DB954" style={styles.loader} />}
-          </View>
-        ) : (
-          <ScrollView style={styles.contentContainer} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.sectionTitle}>{getRecommendationTitle()}</Text>
-            {recommendations.length > 0 ? (
-              recommendations.map(track => renderItem(track, true))
-            ) : (
-              <Text style={styles.emptyText}>No music available</Text>
-            )}
-
-            {recommendations.length > 0 && (
-              <TouchableOpacity
-                style={styles.createPlaylistButton}
-                onPress={createRecommendationPlaylist}
-                disabled={loading}
-              >
-                <Text style={styles.createPlaylistButtonText}>Create Playlist</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-        )}
-      </View>
-    </SafeAreaView>
+    <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+      {!token ? (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login">
+            {(props) => <LoginScreen {...props} onLogin={handleLogin} loading={loading} />}
+          </Stack.Screen>
+        </Stack.Navigator>
+      ) : (
+        <DrawerNavigator token={token} onLogout={handleLogout} />
+      )}
+    </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#121212" },
-  container: { flex: 1, backgroundColor: "#121212" },
-  loginContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  title: { fontSize: 28, fontWeight: "bold", color: "#FFF", marginBottom: 10 },
-  subtitle: { fontSize: 16, color: "#B3B3B3", textAlign: "center", marginBottom: 30 },
-  loginButton: { backgroundColor: "#1DB954", padding: 12, paddingHorizontal: 30, borderRadius: 25 },
-  loginButtonText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-  scrollContent: { padding: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#FFF", marginBottom: 10 },
-  itemContainer: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  itemImage: { width: 60, height: 60, borderRadius: 6, backgroundColor: "#333" },
-  noImage: { justifyContent: "center", alignItems: "center" },
-  noImageText: { fontSize: 24, fontWeight: "bold", color: "#1DB954" },
-  itemDetails: { marginLeft: 12 },
-  itemTitle: { fontSize: 16, fontWeight: "500", color: "#FFF" },
-  itemSubtitle: { fontSize: 14, color: "#B3B3B3" },
-  createPlaylistButton: {
-    backgroundColor: "#1DB954",
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignItems: "center",
+// The root component now simply provides the theme context to the rest of the app
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+const getStyles = (isDark) => StyleSheet.create({
+  drawerContainer: {
+    flex: 1,
+    backgroundColor: isDark ? '#121212' : '#ffffff',
+    paddingTop: 10,
+    paddingHorizontal: 10,
+  },
+  themeToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    padding: 10,
+  },
+  themeToggleText: {
+    color: isDark ? 'white' : 'black',
+    fontSize: 16,
+    flex: 1,
+    marginLeft: 8,
+  },
+  profileContainer: {
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: isDark ? '#282828' : '#ccc',
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
+  },
+  profileName: {
+    color: isDark ? 'white' : '#000',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  profileEmail: {
+    color: isDark ? '#B3B3B3' : '#555',
+    fontSize: 14,
+  },
+  navContainer: {
+    flex: 1,
     marginTop: 20,
   },
-  createPlaylistButtonText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-  errorText: { color: "red", textAlign: "center", marginTop: 10 },
-  emptyText: { color: "#B3B3B3", textAlign: "center", fontStyle: "italic", marginVertical: 20 },
-  loader: { marginTop: 20 },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  navItemText: {
+    color: isDark ? 'white' : '#222',
+    fontSize: 16,
+    marginLeft: 15,
+    fontWeight: '500',
+  },
+  footerContainer: {
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: isDark ? '#282828' : '#ccc',
+  },
 });
